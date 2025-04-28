@@ -3,16 +3,17 @@ local overlay = require('plugins.overlay')
 local setbelief = reqscript('modtools/set-belief')
 local utils = require('utils')
 local widgets = require('gui.widgets')
+local argparse = require('argparse')
 
 local function get_rating(val, baseline, range, highest, high, med, low)
     val = val - (baseline or 0)
     range = range or 100
     local percentile = (math.min(range, val) * 100) // range
-    if percentile < (low or 25) then return percentile, COLOR_RED end
-    if percentile < (med or 50) then return percentile, COLOR_LIGHTRED end
-    if percentile < (high or 75) then return percentile, COLOR_YELLOW end
-    if percentile < (highest or 90) then return percentile, COLOR_GREEN end
-    return percentile, COLOR_LIGHTGREEN
+    if percentile < (low or 25) then return percentile end
+    if percentile < (med or 50) then return percentile end
+    if percentile < (high or 75) then return percentile end
+    if percentile < (highest or 90) then return percentile end
+    return percentile
 end
 
 local function get_mental_stability(unit)
@@ -56,10 +57,9 @@ local function get_mental_stability(unit)
 end
 
 local function is_unstable(unit)
-    -- stddev percentiles are 61, 48, 35, 23
-    -- let's go with one stddev below the mean (35) as the cutoff
-    local _, color = get_rating(get_mental_stability(unit), -40, 80, 35, 0, 0, 0)
-    return color ~= COLOR_LIGHTGREEN
+    local percentile = get_rating(get_mental_stability(unit), -40, 80, 35, 0, 0, 0)
+    local instability_percentile_threshold = 35
+    return percentile < instability_percentile_threshold
 end
 
 local function is_maimed(unit)
@@ -90,7 +90,6 @@ local function melee_skill_effectiveness(unit)
     local kinesthetic_sense = dfhack.units.getMentalAttrValue(unit, df.mental_attribute_type.KINESTHETIC_SENSE)
 
     -- Skills
-    -- Finding the highest skill
     local skill_rating = 0
     for _, skill in ipairs(MELEE_WEAPON_SKILLS) do
         local melee_skill = dfhack.units.getNominalSkill(unit, skill, true)
@@ -99,13 +98,41 @@ local function melee_skill_effectiveness(unit)
     local melee_combat_rating = dfhack.units.getNominalSkill(unit, df.job_skill.MELEE_COMBAT, true)
 
     local rating = skill_rating * 27000 + melee_combat_rating * 9000
-            + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
-            + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
+                    + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
+                    + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
     return rating
 end
 
 local function get_melee_skill_effectiveness_rating(unit)
     return get_rating(melee_skill_effectiveness(unit), 350000, 2750000, 64, 52, 40, 28)
+end
+
+local function get_melee_combat_potential(unit)
+    -- Physical attributes
+    local strength = unit.body.physical_attrs.STRENGTH.max_value
+    local agility = unit.body.physical_attrs.AGILITY.max_value
+    local toughness = unit.body.physical_attrs.TOUGHNESS.max_value
+    local endurance = unit.body.physical_attrs.ENDURANCE.max_value
+    local body_size_base = unit.body.size_info.size_base
+
+    -- Mental attributes
+    local willpower = unit.status.current_soul.mental_attrs.WILLPOWER.max_value
+    local spatial_sense = unit.status.current_soul.mental_attrs.SPATIAL_SENSE.max_value
+    local kinesthetic_sense = unit.status.current_soul.mental_attrs.KINESTHETIC_SENSE.max_value
+
+    -- assume highest skill ratings
+    local skill_rating = df.skill_rating.Legendary5
+    local melee_combat_rating = df.skill_rating.Legendary5
+
+    -- melee combat potential rating
+    local rating = skill_rating * 27000 + melee_combat_rating * 9000
+                    + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
+                    + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
+    return rating
+end
+
+local function get_melee_combat_potential_rating(unit)
+    return get_rating(get_melee_combat_potential(unit), 350000, 2750000, 64, 52, 40, 28)
 end
 
 function assignFreeSquadPosition(unit)
@@ -128,23 +155,39 @@ function assignFreeSquadPosition(unit)
     end
 end
 
-function fillSquads()
+function fillSquads(sort_type)
     local eligible_dwarves = {}
 
     -- Collect all eligible squadless dwarves and their melee skill effectiveness
     for i, unit in pairs( df.global.world.units.active ) do
         if dfhack.units.isCitizen(unit) and unit.military.squad_id == -1 and unit.profession ~= 103 then
             if not is_maimed(unit) and not is_unstable(unit) then
-                local effectiveness = melee_skill_effectiveness(unit)
-                table.insert(eligible_dwarves, {unit = unit, effectiveness = effectiveness})
+                local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
+                local potential_percentile = get_melee_combat_potential_rating(unit)
+                table.insert(eligible_dwarves, {
+                    unit = unit,
+                    effectiveness = effectiveness_percentile,
+                    potential = potential_percentile
+                })
             end
         end
     end
 
-    -- Sort the eligible dwarves by their melee skill effectiveness in descending order
-    table.sort(eligible_dwarves, function(a, b)
-        return a.effectiveness > b.effectiveness
-    end)
+    -- Sort the eligible dwarves
+    if sort_type == "potential" then
+        table.sort(eligible_dwarves, function(a, b)
+            return a.potential > b.potential
+        end)
+    elseif sort_type == "effectiveness" then
+        table.sort(eligible_dwarves, function(a, b)
+            return a.effectiveness > b.effectiveness
+        end)
+    else
+        -- Default sort by effectiveness
+        table.sort(eligible_dwarves, function(a, b)
+            return a.effectiveness > b.effectiveness
+        end)
+    end
 
     -- Assign the sorted dwarves to any free squad positions
     for _, dwarf_info in ipairs(eligible_dwarves) do
@@ -152,4 +195,17 @@ function fillSquads()
     end
 end
 
-fillSquads()
+local argparse = require('argparse')
+local parser = argparse.newParser{
+    description = "Fills military squads, sorting by effectiveness or potential.",
+    usage = "autosquad.lua [-s <sort_type>]"
+}
+
+parser:addArgument('sort_type', '-s', {
+    choices = {'effectiveness', 'potential'},
+    defaultValue = 'effectiveness',
+    help = "Sort dwarves by 'effectiveness' or 'potential'.",
+    })
+local args = parser:parse()
+
+fillSquads(args.sort_type)
