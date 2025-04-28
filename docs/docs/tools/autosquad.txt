@@ -1,0 +1,48 @@
+autosquad
+==========
+
+Tags: fort | auto
+
+Command: "autosquad"
+
+   Run script to automagically assign squad members by effectiveness or potential.
+	
+Ignores maimed or unstable dwarves.
+   
+Script does not automatically run, you'll need to run it anytime you want to fill squads.
+
+Usage
+-----
+
+   autosquad [<options>]
+
+
+Examples
+--------
+
+"autosquad -s effectiveness"
+   Assign squad members by effectiveness
+   
+"autosquad -s potential"
+   Assign squad members by potential
+   
+"autosquad -s e"
+   Assign squad members by effectiveness
+   
+"autosquad -s p"
+   Assign squad members by potential
+
+"autosquad -s p/e -in maimed,unstable"
+   Include maimed and unstable
+   
+"autosquad -s p/e -in maimed"
+   Include maimed
+   
+"autosquad -s p/e -in unstable"
+   Include unstable
+
+Options
+-------
+
+"-s"
+   Sorting priority by effectiveness(e) or potential(p). Defaults to effectiveness

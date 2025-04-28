@@ -3,7 +3,6 @@ local overlay = require('plugins.overlay')
 local setbelief = reqscript('modtools/set-belief')
 local utils = require('utils')
 local widgets = require('gui.widgets')
-local argparse = require('argparse')
 
 local function get_rating(val, baseline, range, highest, high, med, low)
     val = val - (baseline or 0)
@@ -135,10 +134,13 @@ local function get_melee_combat_potential_rating(unit)
     return get_rating(get_melee_combat_potential(unit), 350000, 2750000, 64, 52, 40, 28)
 end
 
-function assignFreeSquadPosition(unit)
+function assignFreeSquadPosition(unit, include_maimed, include_unstable)
     -- First, check if the dwarf is suitable for military service
-    if is_maimed(unit) or is_unstable(unit) then
-        return -- Skip this dwarf if they are maimed or unstable
+    if not include_maimed and is_maimed(unit) then
+        return
+    end
+    if not include_unstable and is_unstable(unit) then
+        return
     end
 
     for i, squad in pairs( df.global.world.squads.all ) do
@@ -155,13 +157,15 @@ function assignFreeSquadPosition(unit)
     end
 end
 
-function fillSquads(sort_type)
+function fillSquads(sort_type, include_maimed, include_unstable)
     local eligible_dwarves = {}
 
-    -- Collect all eligible squadless dwarves and their melee skill effectiveness
+    -- Collect all eligible squadless dwarves
     for i, unit in pairs( df.global.world.units.active ) do
+        local use_maimed = include_maimed or not is_maimed(unit)
+        local use_unstable = include_unstable or not is_unstable(unit)
         if dfhack.units.isCitizen(unit) and unit.military.squad_id == -1 and unit.profession ~= 103 then
-            if not is_maimed(unit) and not is_unstable(unit) then
+            if use_maimed and use_unstable then
                 local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
                 local potential_percentile = get_melee_combat_potential_rating(unit)
                 table.insert(eligible_dwarves, {
@@ -191,21 +195,44 @@ function fillSquads(sort_type)
 
     -- Assign the sorted dwarves to any free squad positions
     for _, dwarf_info in ipairs(eligible_dwarves) do
-        assignFreeSquadPosition(dwarf_info.unit)
+        assignFreeSquadPosition(dwarf_info.unit, include_maimed, include_unstable)
     end
 end
 
-local argparse = require('argparse')
-local parser = argparse.newParser{
-    description = "Fills military squads, sorting by effectiveness or potential.",
-    usage = "autosquad.lua [-s <sort_type>]"
-}
+--  Get arguments from the command line string
+local sort_type = "effectiveness"  -- Default value
+local include_maimed = false
+local include_unstable = false
+local args = {...}
 
-parser:addArgument('sort_type', '-s', {
-    choices = {'effectiveness', 'potential'},
-    defaultValue = 'effectiveness',
-    help = "Sort dwarves by 'effectiveness' or 'potential'.",
-    })
-local args = parser:parse()
+for i = 1, #args do
+    if args[i] == "-s" then
+        if args[i+1] == "potential" or args[i+1] == "p" then
+            sort_type = "potential"
+        elseif args[i+1] == "effectiveness" or args[i+1] == "e" then
+            sort_type = "effectiveness"
+        else
+            dfhack.printerr("Error: Invalid sort type.  Use 'effectiveness' ('e') or 'potential' ('p').\n")
+            return
+        end
+    elseif args[i] == "-in" then
+        if args[i+1] then
+            local includes = string.split(args[i+1], ",")
+            for _, inc in ipairs(includes) do
+                if inc == "maimed" then
+                    include_maimed = true
+                elseif inc == "unstable" then
+                    include_unstable = true
+                else
+                    dfhack.printerr("Error: Invalid inclusion type.  Use 'maimed' or 'unstable'.\n")
+                    return
+                end
+            end
+        else
+            dfhack.printerr("Error: -in flag requires an argument (e.g., 'maimed' or 'unstable').\n")
+            return
+        end
+    end
+end
 
-fillSquads(args.sort_type)
+fillSquads(sort_type, include_maimed, include_unstable)
