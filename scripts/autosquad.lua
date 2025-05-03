@@ -1,8 +1,9 @@
-local gui = require('gui')
-local overlay = require('plugins.overlay')
+--Parts from the sort lua plugin. /lua/plugins/sort.lua
+--Original Credits Razzim - https://github.com/Razzim/Autosquad/blob/main/autosquad.lua -
+
+
 local setbelief = reqscript('modtools/set-belief')
 local utils = require('utils')
-local widgets = require('gui.widgets')
 
 local function get_rating(val, baseline, range, highest, high, med, low)
     val = val - (baseline or 0)
@@ -161,18 +162,20 @@ function fillSquads(sort_type, include_maimed, include_unstable)
     local eligible_dwarves = {}
 
     -- Collect all eligible squadless dwarves
-    for i, unit in pairs( df.global.world.units.active ) do
+    for i, unit in pairs(df.global.world.units.active) do
         local use_maimed = include_maimed or not is_maimed(unit)
         local use_unstable = include_unstable or not is_unstable(unit)
-        if dfhack.units.isCitizen(unit) and unit.military.squad_id == -1 and unit.profession ~= 103 then
-            if use_maimed and use_unstable then
-                local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
-                local potential_percentile = get_melee_combat_potential_rating(unit)
-                table.insert(eligible_dwarves, {
-                    unit = unit,
-                    effectiveness = effectiveness_percentile,
-                    potential = potential_percentile
-                })
+        if dfhack.units.isCitizen(unit) and dfhack.units.isAdult(unit) and unit.military.squad_id == -1 and unit.profession ~= 103 then
+            if not dfhack.units.isResident(unit) and not dfhack.units.isVisitor(unit) and not dfhack.units.getNoblePositions(unit) then
+                if use_maimed and use_unstable then
+                    local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
+                    local potential_percentile = get_melee_combat_potential_rating(unit)
+                    table.insert(eligible_dwarves, {
+                        unit = unit,
+                        effectiveness = effectiveness_percentile,
+                        potential = potential_percentile
+                    })
+                end
             end
         end
     end
