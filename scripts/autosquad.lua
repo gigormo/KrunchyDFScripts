@@ -44,14 +44,14 @@ local function get_mental_stability(unit)
 
     -- calculate the rating using the defined variables
     local rating = (craftsmanship * -0.01) + (family * -0.09) + (harmony * 0.05)
-                    + (independence * 0.06) + (knowledge * -0.30) + (leisure_time * 0.24)
-                    + (nature * 0.27) + (skill * -0.21) + (altruism * 0.13)
-                    + (anxiety_propensity * -0.06) + (bravery * 0.06)
-                    + (cheer_propensity * 0.41) + (curious * -0.06) + (discord * 0.14)
-                    + (dutifulness * -0.03) + (emotionally_obsessive * -0.13)
-                    + (humor * -0.05) + (love_propensity * 0.15) + (perseverence * -0.07)
-                    + (politeness * -0.14) + (privacy * 0.03) + (stress_vulnerability * -0.20)
-                    + (tolerant * -0.11)
+        + (independence * 0.06) + (knowledge * -0.30) + (leisure_time * 0.24)
+        + (nature * 0.27) + (skill * -0.21) + (altruism * 0.13)
+        + (anxiety_propensity * -0.06) + (bravery * 0.06)
+        + (cheer_propensity * 0.41) + (curious * -0.06) + (discord * 0.14)
+        + (dutifulness * -0.03) + (emotionally_obsessive * -0.13)
+        + (humor * -0.05) + (love_propensity * 0.15) + (perseverence * -0.07)
+        + (politeness * -0.14) + (privacy * 0.03) + (stress_vulnerability * -0.20)
+        + (tolerant * -0.11)
 
     return rating
 end
@@ -64,8 +64,8 @@ end
 
 local function is_maimed(unit)
     return not unit.flags2.vision_good or
-           unit.status2.limbs_grasp_count < 2 or
-           unit.status2.limbs_stand_count == 0
+        unit.status2.limbs_grasp_count < 2 or
+        unit.status2.limbs_stand_count == 0
 end
 
 local MELEE_WEAPON_SKILLS = {
@@ -98,8 +98,8 @@ local function melee_skill_effectiveness(unit)
     local melee_combat_rating = dfhack.units.getNominalSkill(unit, df.job_skill.MELEE_COMBAT, true)
 
     local rating = skill_rating * 27000 + melee_combat_rating * 9000
-                    + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
-                    + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
+        + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
+        + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
     return rating
 end
 
@@ -126,8 +126,8 @@ local function get_melee_combat_potential(unit)
 
     -- melee combat potential rating
     local rating = skill_rating * 27000 + melee_combat_rating * 9000
-                    + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
-                    + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
+        + strength * 180 + body_size_base * 100 + kinesthetic_sense * 50 + endurance * 50
+        + agility * 30 + toughness * 20 + willpower * 20 + spatial_sense * 20
     return rating
 end
 
@@ -144,9 +144,9 @@ function assignFreeSquadPosition(unit, include_maimed, include_unstable)
         return
     end
 
-    for i, squad in pairs( df.global.world.squads.all ) do
+    for i, squad in pairs(df.global.world.squads.all) do
         if squad.symbol ~= -1 then
-            for j, position in pairs( squad.positions ) do
+            for j, position in pairs(squad.positions) do
                 if position.occupant == -1 then
                     position.occupant = unit.hist_figure_id
                     unit.military.squad_id = squad.id
@@ -203,28 +203,28 @@ function fillSquads(sort_type, include_maimed, include_unstable)
 end
 
 --  Get arguments from the command line string
-local sort_type = "effectiveness"  -- Default value
+local sort_type = "effectiveness" -- Default value
 local include_maimed = false
 local include_unstable = false
-local args = {...}
+local args = { ... }
 
 for i = 1, #args do
     if args[i] == "-s" then
-        if args[i+1] == "potential" or args[i+1] == "p" then
+        if args[i + 1] == "potential" or args[i + 1] == "p" then
             sort_type = "potential"
-        elseif args[i+1] == "effectiveness" or args[i+1] == "e" then
+        elseif args[i + 1] == "effectiveness" or args[i + 1] == "e" then
             sort_type = "effectiveness"
         else
             dfhack.printerr("Error: Invalid sort type.  Use 'effectiveness' ('e') or 'potential' ('p').\n")
             return
         end
     elseif args[i] == "-in" then
-        if args[i+1] then
-            local includes = string.split(args[i+1], ",")
+        if args[i + 1] then
+            local includes = string.split(args[i + 1], ",")
             for _, inc in ipairs(includes) do
-                if inc == "maimed" then
+                if inc == "maimed" or inc == "m" then
                     include_maimed = true
-                elseif inc == "unstable" then
+                elseif inc == "unstable" or inc == "u" then
                     include_unstable = true
                 else
                     dfhack.printerr("Error: Invalid inclusion type.  Use 'maimed' or 'unstable'.\n")
@@ -236,6 +236,10 @@ for i = 1, #args do
             return
         end
     end
+end
+
+if not dfhack.isMapLoaded() then
+    qerror('This script requires a map to be loaded')
 end
 
 fillSquads(sort_type, include_maimed, include_unstable)

@@ -25,24 +25,21 @@ Examples
    
 "autosquad -s potential"
    Assign squad members by potential
-   
-"autosquad -s e"
-   Assign squad members by effectiveness
-   
-"autosquad -s p"
-   Assign squad members by potential
 
-"autosquad -s p/e -in maimed,unstable"
-   Include maimed and unstable
+"autosquad -in maimed"
+   Include maimed units
    
-"autosquad -s p/e -in maimed"
-   Include maimed
+"autosquad -in unstable"
+   Include unstable units
    
-"autosquad -s p/e -in unstable"
-   Include unstable
+"autosquad -in maimed,unstable"
+   Both includes work if seperated by a ,
 
 Options
 -------
 
 "-s"
    Sorting priority by effectiveness(e) or potential(p). Defaults to effectiveness
+
+"-in"
+   Include maimed(m) or unstable(u) units
