@@ -17,21 +17,24 @@ local function get_rating(val, baseline, range, highest, high, med, low)
 end
 
 local function get_mental_stability(unit)
-    local altruism = unit.status.current_soul.personality.traits.ALTRUISM
-    local anxiety_propensity = unit.status.current_soul.personality.traits.ANXIETY_PROPENSITY
-    local bravery = unit.status.current_soul.personality.traits.BRAVERY
-    local cheer_propensity = unit.status.current_soul.personality.traits.CHEER_PROPENSITY
-    local curious = unit.status.current_soul.personality.traits.CURIOUS
-    local discord = unit.status.current_soul.personality.traits.DISCORD
-    local dutifulness = unit.status.current_soul.personality.traits.DUTIFULNESS
-    local emotionally_obsessive = unit.status.current_soul.personality.traits.EMOTIONALLY_OBSESSIVE
-    local humor = unit.status.current_soul.personality.traits.HUMOR
-    local love_propensity = unit.status.current_soul.personality.traits.LOVE_PROPENSITY
-    local perseverence = unit.status.current_soul.personality.traits.PERSEVERENCE
-    local politeness = unit.status.current_soul.personality.traits.POLITENESS
-    local privacy = unit.status.current_soul.personality.traits.PRIVACY
-    local stress_vulnerability = unit.status.current_soul.personality.traits.STRESS_VULNERABILITY
-    local tolerant = unit.status.current_soul.personality.traits.TOLERANT
+
+    local traits = unit.status.current_soul.personality.traits
+
+    local altruism = traits.ALTRUISM
+    local anxiety_propensity = traits.ANXIETY_PROPENSITY
+    local bravery = traits.BRAVERY
+    local cheer_propensity = traits.CHEER_PROPENSITY
+    local curious = traits.CURIOUS
+    local discord = traits.DISCORD
+    local dutifulness = traits.DUTIFULNESS
+    local emotionally_obsessive = traits.EMOTIONALLY_OBSESSIVE
+    local humor = traits.HUMOR
+    local love_propensity = traits.LOVE_PROPENSITY
+    local perseverence = traits.PERSEVERENCE
+    local politeness = traits.POLITENESS
+    local privacy = traits.PRIVACY
+    local stress_vulnerability = traits.STRESS_VULNERABILITY
+    local tolerant = traits.TOLERANT
 
     local craftsmanship = setbelief.getUnitBelief(unit, df.value_type['CRAFTSMANSHIP'])
     local family = setbelief.getUnitBelief(unit, df.value_type['FAMILY'])
@@ -161,21 +164,21 @@ end
 function fillSquads(sort_type, include_maimed, include_unstable)
     local eligible_dwarves = {}
 
-    -- Collect all eligible squadless dwarves
-    for i, unit in pairs(df.global.world.units.active) do
-        local use_maimed = include_maimed or not is_maimed(unit)
-        local use_unstable = include_unstable or not is_unstable(unit)
-        if dfhack.units.isCitizen(unit) and dfhack.units.isAdult(unit) and unit.military.squad_id == -1 and unit.profession ~= 103 then
-            if not dfhack.units.isResident(unit) and not dfhack.units.isVisitor(unit) and not dfhack.units.getNoblePositions(unit) then
-                if use_maimed and use_unstable then
-                    local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
-                    local potential_percentile = get_melee_combat_potential_rating(unit)
-                    table.insert(eligible_dwarves, {
-                        unit = unit,
-                        effectiveness = effectiveness_percentile,
-                        potential = potential_percentile
-                    })
-                end
+    -- Collect all eligible squadless, non-resident, (potentially insane) adult citizens
+    local citizens = dfhack.units.getCitizens(true, include_unstable)
+
+    for _, unit in ipairs(citizens) do
+        if dfhack.units.isAdult(unit) and unit.military.squad_id == -1 then
+            local use_maimed = include_maimed or not is_maimed(unit)
+            local use_unstable = include_unstable or not is_unstable(unit)
+            if use_maimed and use_unstable then
+                local effectiveness_percentile = get_melee_skill_effectiveness_rating(unit)
+                local potential_percentile = get_melee_combat_potential_rating(unit)
+                table.insert(eligible_dwarves, {
+                    unit = unit,
+                    effectiveness = effectiveness_percentile,
+                    potential = potential_percentile
+                })
             end
         end
     end
@@ -215,7 +218,7 @@ for i = 1, #args do
         elseif args[i + 1] == "effectiveness" or args[i + 1] == "e" then
             sort_type = "effectiveness"
         else
-            dfhack.printerr("Error: Invalid sort type.  Use 'effectiveness' ('e') or 'potential' ('p').\n")
+            dfhack.printerr("Invalid sort type.  Use 'effectiveness(e)' or 'potential(p)'.\n")
             return
         end
     elseif args[i] == "-in" then
@@ -227,12 +230,12 @@ for i = 1, #args do
                 elseif inc == "unstable" or inc == "u" then
                     include_unstable = true
                 else
-                    dfhack.printerr("Error: Invalid inclusion type.  Use 'maimed' or 'unstable'.\n")
+                    dfhack.printerr("Invalid include.  Use 'maimed(m)' or 'unstable(u)'.\n")
                     return
                 end
             end
         else
-            dfhack.printerr("Error: -in flag requires an argument (e.g., 'maimed' or 'unstable').\n")
+            dfhack.printerr("-in flag requires an argument (e.g., 'maimed(m)' or 'unstable(u)'.\n")
             return
         end
     end
