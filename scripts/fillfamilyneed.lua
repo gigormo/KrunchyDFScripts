@@ -27,11 +27,11 @@ local function fulfill_family_need()
     return
   end
 
-  -- Directly fulfill the need
+  -- Fulfill the need
   for _, data in pairs(family_units) do
     local unit = data.unit
     local need = data.need
-    need.focus_level = 400 -- Also set focus_level to 0 (important for some needs)
+    need.focus_level = 400
     unit.status.current_soul.personality.stress = -1000000
     dfhack.print("Family needs filled : ")
     dfhack.print(dfhack.units.getReadableName(unit))
