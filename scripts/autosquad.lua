@@ -168,7 +168,7 @@ function fillSquads(sort_type, include_maimed, include_unstable)
     local citizens = dfhack.units.getCitizens(true, include_unstable)
 
     for _, unit in ipairs(citizens) do
-        if dfhack.units.isAdult(unit) and unit.military.squad_id == -1 then
+        if dfhack.units.isAdult(unit) and unit.military.squad_id == -1 and not dfhack.units.getNoblePositions(unit) then
             local use_maimed = include_maimed or not is_maimed(unit)
             local use_unstable = include_unstable or not is_unstable(unit)
             if use_maimed and use_unstable then
